@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cisza">
+<meta name="theme-color" content="#e9eeec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d1716" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<title>Cisza</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column, four views behind a fixed bottom tab bar; player and timer open as full-screen sheets built around a ring of singing-bowl ripples. */
+:root {
+  --bg: #e9eeec;
+  --surface: #f7f9f8;
+  --line: #cdd8d4;
+  --fg: #152a28;
+  --muted: #566b67;
+  --accent: #1c6a60;
+  --accent-ink: #f3faf8;
+  --brass: #a8811a;
+  --brass-soft: #ecdfb4;
+  --sheet: #10302d;
+  --sheet-fg: #e6f1ee;
+  --sheet-muted: #9dbab4;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Instrument Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1716; --surface: #152321; --line: #263936; --fg: #e2ece9; --muted: #8ea5a0;
+    --accent: #69c2b2; --accent-ink: #082320; --brass: #d8b649; --brass-soft: #3d3515;
+    --sheet: #0a1f1d; --sheet-fg: #e6f1ee; --sheet-muted: #8fada7; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1716; --surface: #152321; --line: #263936; --fg: #e2ece9; --muted: #8ea5a0;
+  --accent: #69c2b2; --accent-ink: #082320; --brass: #d8b649; --brass-soft: #3d3515;
+  --sheet: #0a1f1d; --sheet-fg: #e6f1ee; --sheet-muted: #8fada7; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.45 var(--body);
+  -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+h1, h2, h3, p { margin: 0; }
+.app {
+  max-width: 520px; margin: 0 auto; min-height: 100%;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px)); padding-bottom: 104px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.view { display: flex; flex-direction: column; gap: 26px; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.wordmark { font: 700 26px/1 var(--display); letter-spacing: -0.02em; }
+.date { color: var(--muted); font-size: 14px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+h2 { font: 700 20px/1.2 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
+.section { display: flex; flex-direction: column; gap: 12px; }
+
+/* Today's session */
+.next {
+  background: var(--sheet); color: var(--sheet-fg); border-radius: 26px;
+  padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: end;
+  position: relative; overflow: hidden; width: 100%; text-align: left;
+}
+.next::before {
+  content: ""; position: absolute; right: -70px; top: -70px; width: 260px; height: 260px; border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 17px, rgba(160, 215, 203, 0.13) 17px 18px);
+}
+.next .eyebrow { color: var(--sheet-muted); }
+.next h1 { font: 700 30px/1.08 var(--display); letter-spacing: -0.02em; margin-top: 44px; text-wrap: balance; }
+.next .meta { color: var(--sheet-muted); font-size: 14px; margin-top: 8px; }
+.next > div { position: relative; min-width: 0; }
+.playdot {
+  position: relative; width: 60px; height: 60px; border-radius: 50%; background: #d8b649; color: #1a1705;
+  display: grid; place-items: center; flex: none;
+}
+.playdot svg { width: 22px; height: 22px; margin-left: 3px; }
+
+/* Week strip */
+.week { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.days { display: flex; gap: 8px; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); font-weight: 500; }
+.day i { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line); display: block; }
+.day.on i { background: var(--accent); border-color: var(--accent); }
+.day.today { color: var(--fg); font-weight: 600; }
+.day.today i { border-color: var(--fg); }
+.day.today.on i { border-color: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--accent); }
+.streak { font: 700 20px/1 var(--display); }
+.streak small { display: block; font: 400 13px/1.3 var(--body); color: var(--muted); margin-top: 4px; }
+
+/* Lists of sessions */
+.rows { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+  padding: 13px 0; border-bottom: 1px solid var(--line); text-align: left; width: 100%;
+}
+.row .n { font: 500 14px/1 var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .tick { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; }
+.row.done .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.row .tick svg { width: 12px; height: 12px; }
+.row b { display: block; font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.row span.by { display: block; font-size: 13px; color: var(--muted); margin-top: 1px; overflow-wrap: anywhere; }
+.row .len { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row.current b { color: var(--accent); }
+.row.off b { color: var(--muted); font-weight: 500; }
+.row .sv { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--brass); margin-right: 7px; vertical-align: middle; }
+.chip:disabled { opacity: 0.55; cursor: default; }
+.quiet { font-size: 13px; color: var(--sheet-muted); text-decoration: underline; text-underline-offset: 3px; padding: 8px 12px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); font-size: 14px; font-weight: 500; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+
+/* Timer set-up */
+.dial { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 14px 0 4px; }
+.dial .num { font: 700 76px/1 var(--display); letter-spacing: -0.04em; font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: center; }
+.dial .unit { font-size: 14px; color: var(--muted); text-align: center; margin-top: 2px; }
+.step { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid var(--line); font-size: 24px; line-height: 1; }
+.cta {
+  background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 17px;
+  border-radius: 999px; padding: 16px 22px; width: 100%;
+}
+.note { font-size: 13px; color: var(--muted); }
+
+/* Progress */
+.figures { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 16px; }
+.figures div b { display: block; font: 700 34px/1 var(--display); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.figures div span { font-size: 13px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+.grid .h { font-size: 11px; color: var(--muted); text-align: center; font-weight: 500; }
+.cell { aspect-ratio: 1; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); max-width: 100%; }
+.cell.l1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); border-color: transparent; }
+.cell.l2 { background: color-mix(in srgb, var(--accent) 62%, var(--surface)); border-color: transparent; }
+.cell.l3 { background: var(--accent); border-color: transparent; }
+.cell.fut { background: transparent; border-style: dashed; }
+.cell.now { outline: 2px solid var(--brass); outline-offset: 1px; }
+.hist { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.hist span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.hist span:last-child { color: var(--muted); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.credits { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
+.credits a { color: var(--accent); }
+.empty { color: var(--muted); font-size: 15px; padding: 6px 0; }
+
+/* Tab bar */
+.tabs {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  padding-top: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.tabs div { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; color: var(--muted); padding: 4px 0; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
+
+/* Full-screen sheets: player and running timer */
+.sheet {
+  position: fixed; inset: 0; z-index: 20; background: var(--sheet); color: var(--sheet-fg);
+  display: flex; flex-direction: column; align-items: center; gap: 18px; overflow-y: auto;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px)); padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.sheet .bar { width: 100%; max-width: 480px; display: flex; justify-content: space-between; align-items: center; }
+.sheet .close { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--sheet-muted); margin-left: -10px; }
+.sheet .close svg { width: 22px; height: 22px; }
+.sheet .eyebrow { color: var(--sheet-muted); }
+.bowl { flex: 1 1 auto; min-height: 200px; width: 100%; display: grid; place-items: center; position: relative; }
+.rings { position: relative; width: min(64vw, 260px); aspect-ratio: 1; max-width: 100%; }
+.rings i { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(160, 215, 203, 0.34); }
+.rings i:nth-child(2) { inset: 12%; border-color: rgba(160, 215, 203, 0.46); }
+.rings i:nth-child(3) { inset: 24%; border-color: rgba(160, 215, 203, 0.6); }
+.rings i:nth-child(4) { inset: 36%; background: radial-gradient(circle at 35% 30%, #e7cf78, #b8922a); border: 0; }
+.live .rings { animation: breathe 11s ease-in-out infinite; }
+.live .rings i:nth-child(1) { animation: ripple 11s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { transform: scale(0.86); } 45% { transform: scale(1); } }
+@keyframes ripple { 0%, 100% { opacity: 0.3; } 45% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .live .rings, .live .rings i { animation: none; } }
+.sheet h1 { font: 700 28px/1.12 var(--display); letter-spacing: -0.02em; text-align: center; text-wrap: balance; max-width: 16ch; }
+.sheet .by { color: var(--sheet-muted); font-size: 14px; text-align: center; margin-top: 6px; }
+.scrub { width: 100%; max-width: 480px; }
+.scrub input { width: 100%; accent-color: #d8b649; height: 28px; margin: 0; }
+.scrub .t { display: flex; justify-content: space-between; font-size: 13px; color: var(--sheet-muted); font-variant-numeric: tabular-nums; }
+.ctl { display: flex; align-items: center; gap: 28px; }
+.ctl .skip { width: 52px; height: 52px; border-radius: 50%; font-size: 13px; font-weight: 600; color: var(--sheet-fg); border: 1.5px solid rgba(160, 215, 203, 0.34); }
+.ctl .main { width: 76px; height: 76px; border-radius: 50%; background: #d8b649; color: #1a1705; display: grid; place-items: center; }
+.ctl .main svg { width: 28px; height: 28px; }
+.clock { font: 700 64px/1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ghost { border: 1.5px solid rgba(160, 215, 203, 0.34); color: var(--sheet-fg); border-radius: 999px; padding: 13px 22px; font-weight: 600; }
+.status { font-size: 14px; color: var(--sheet-muted); min-height: 1.45em; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <section class="view" id="v-today">
+    <div class="top"><span class="wordmark">Cisza</span><span class="date" id="date"></span></div>
+    <button class="next" id="next" type="button"></button>
+    <div class="week"><div class="days" id="days"></div><div class="streak" id="streak"></div></div>
+    <div class="section">
+      <span class="eyebrow">Fourteen-day path</span>
+      <h2>From five minutes of breath to a twenty-minute sit</h2>
+      <div class="rows" id="path"></div>
+    </div>
+    <p class="note" id="install" hidden>To use Cisza like an app, open the Share menu in Safari and choose Add to Home Screen.</p>
+  </section>
+
+  <section class="view" id="v-library" hidden>
+    <div class="top"><span class="wordmark">Library</span><span class="date" id="libcount"></span></div>
+    <div class="chips" id="cats"></div>
+    <div class="rows" id="lib"></div>
+  </section>
+
+  <section class="view" id="v-timer" hidden>
+    <div class="top"><span class="wordmark">Timer</span><span class="date">Unguided sitting</span></div>
+    <div>
+      <div class="dial">
+        <button class="step" id="less" type="button" aria-label="Shorter">&minus;</button>
+        <div><div class="num" id="mins">10</div><div class="unit">minutes</div></div>
+        <button class="step" id="more" type="button" aria-label="Longer">+</button>
+      </div>
+    </div>
+    <div class="section"><span class="eyebrow">Length</span><div class="chips" id="presets"></div></div>
+    <div class="section"><span class="eyebrow">Bells during the sit</span><div class="chips" id="bells"></div></div>
+    <button class="cta" id="start" type="button">Begin</button>
+    <p class="note">A bowl sounds at the start and the end. Keep this screen open while you sit; the phone stays awake until the last bell.</p>
+  </section>
+
+  <section class="view" id="v-progress" hidden>
+    <div class="top"><span class="wordmark">Progress</span><span class="date">Kept on this phone</span></div>
+    <div class="figures" id="figures"></div>
+    <div class="section"><span class="eyebrow">Last five weeks</span><div class="grid" id="grid"></div></div>
+    <div class="section"><span class="eyebrow">Recent sessions</span><div id="recent"></div></div>
+    <div class="section">
+      <span class="eyebrow">Offline listening</span>
+      <p class="note" id="offnote"></p>
+      <div class="chips"><button class="chip" id="offall" type="button"></button></div>
+    </div>
+    <div class="section">
+      <span class="eyebrow">Backup</span>
+      <p class="note">Your journal lives only on this phone. Save a copy now and then; restoring a copy merges it back in.</p>
+      <div class="chips"><button class="chip" id="backup" type="button">Save a backup</button><button class="chip" id="restore" type="button">Restore from a backup</button></div>
+      <p class="note" id="backnote" hidden></p>
+      <input type="file" id="restorefile" accept="application/json,.json" hidden>
+    </div>
+    <div class="section credits">
+      <span class="eyebrow">About the recordings</span>
+      <p>Eight sessions are by <a href="https://www.uclahealth.org/uclamindful/guided-meditations">UCLA Mindful</a>, &copy; The Regents of the University of California, shared under Creative Commons BY-NC-ND 4.0.</p>
+      <p>The others come from <a href="https://www.freemindfulness.org/download">The Free Mindfulness Project</a> under Creative Commons BY-NC-SA 3.0, recorded by the teachers named beside each session.</p>
+      <p>Most Morning 10 sessions come from <a href="https://dharmaseed.org/">Dharma Seed</a> under Creative Commons BY-NC-ND 4.0, each offered by the teacher named beside it.</p>
+      <p>All recordings are unedited and for personal, non-commercial listening. The files were converted to a smaller audio format; nothing else was changed.</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections"><div>
+  <button class="tab" type="button" data-v="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="8.6" opacity=".55"/></svg>Today</button>
+  <button class="tab" type="button" data-v="library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Library</button>
+  <button class="tab" type="button" data-v="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M9.5 3h5"/></svg>Timer</button>
+  <button class="tab" type="button" data-v="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 19v-5M12 19V6M18 19v-8"/></svg>Progress</button>
+</div></nav>
+
+<div class="sheet" id="player" hidden role="dialog" aria-label="Player">
+  <div class="bar">
+    <button class="close" id="pclose" type="button" aria-label="Close player"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <span class="eyebrow" id="pcat"></span><span style="width:34px"></span>
+  </div>
+  <div class="bowl"><div class="rings"><i></i><i></i><i></i><i></i></div></div>
+  <div><h1 id="ptitle"></h1><p class="by" id="pby"></p></div>
+  <div class="scrub">
+    <input type="range" id="seek" min="0" max="100" value="0" step="1" aria-label="Position">
+    <div class="t"><span id="pcur">0:00</span><span id="pdur">0:00</span></div>
+  </div>
+  <div class="ctl">
+    <button class="skip" id="back" type="button" aria-label="Back 15 seconds">&minus;15</button>
+    <button class="main" id="pp" type="button" aria-label="Play"></button>
+    <button class="skip" id="fwd" type="button" aria-label="Forward 15 seconds">+15</button>
+  </div>
+  <p class="status" id="pstatus"></p>
+  <button class="quiet" id="pskip" type="button" hidden></button>
+</div>
+
+<div class="sheet" id="sit" hidden role="dialog" aria-label="Timer running">
+  <div class="bar">
+    <button class="close" id="sclose" type="button" aria-label="End the sit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <span class="eyebrow">Unguided sitting</span><span style="width:34px"></span>
+  </div>
+  <div class="bowl"><div class="rings"><i></i><i></i><i></i><i></i></div></div>
+  <div class="clock" id="clock">10:00</div>
+  <p class="status" id="sstatus"></p>
+  <div class="ctl">
+    <button class="ghost" id="spause" type="button">Pause</button>
+    <button class="ghost" id="send" type="button">End now</button>
+  </div>
+</div>
+
+<audio id="au" preload="none"></audio>
+<audio id="bell" preload="auto" src="audio/bell.wav"></audio>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var U = "UCLA Mindful";
+  var CATS = { breath: "Breath", body: "Body scan", sitting: "Sitting", heart: "Kindness", reset: "Short resets", imagery: "Imagery" };
+  // id, file, title, teacher, seconds, category
+  var TRACKS = [
+    ["u-breath", "ucla-01_Breathing_Meditation.m4a", "Breathing Meditation", U, 331, "breath"],
+    ["u-bsb", "ucla-02_Breath_Sound_Body_Meditation.m4a", "Breath, Sound, Body", U, 720, "sitting"],
+    ["u-complete", "ucla-03_Complete_Meditation_Instructions.m4a", "Complete Meditation Instructions", U, 1141, "sitting"],
+    ["u-diff", "ucla-04_Meditation_for_Working_with_Difficulties.m4a", "Working with Difficulties", U, 415, "heart"],
+    ["u-kind", "ucla-05_Loving_Kindness_Meditation.m4a", "Loving Kindness", U, 571, "heart"],
+    ["u-scan", "ucla-Body-Scan-Meditation.m4a", "Short Body Scan", U, 165, "body"],
+    ["u-sleep", "ucla-Body-Scan-for-Sleep.m4a", "Body Scan for Sleep", U, 830, "body"],
+    ["u-sound", "ucla-Body-Sound-Meditation.m4a", "Body and Sound", U, 186, "reset"],
+    ["f-b3", "fmp-three-minute-breathing.m4a", "Three Minute Breathing", "Peter Morgan", 216, "breath"],
+    ["f-b5", "fmp-five-minute-breathing-b.m4a", "Five Minute Breathing", "Life Happens", 280, "breath"],
+    ["f-b6", "fmp-six-minute-breath-awareness.m4a", "Six Minute Breath Awareness", "Melbourne Mindfulness Centre & Still Mind", 393, "breath"],
+    ["f-b10", "fmp-ten-minute-breathing.m4a", "Ten Minute Breathing", "Peter Morgan", 597, "breath"],
+    ["f-mb10", "fmp-ten-minute-mindfulness-of-breathing.m4a", "Mindfulness of Breathing", "Padraig O'Morain", 602, "breath"],
+    ["f-brief", "fmp-brief-mindfulness-practice.m4a", "Brief Mindfulness Practice", "Padraig O'Morain", 245, "reset"],
+    ["f-space", "fmp-the-breathing-space.m4a", "The Breathing Space", "Vidyamala Burch, Breathworks", 339, "reset"],
+    ["f-tension", "fmp-tension-release.m4a", "Tension Release", "Vidyamala Burch, Breathworks", 346, "reset"],
+    ["f-3step", "fmp-three-step-breathing-space.m4a", "Three Step Breathing Space", "Peter Morgan", 214, "reset"],
+    ["f-sounds", "fmp-three-minute-sounds.m4a", "Mindfulness of Sounds", "Peter Morgan", 182, "reset"],
+    ["f-scan4", "fmp-four-minute-body-scan.m4a", "Four Minute Body Scan", "Melbourne Mindfulness Centre & Still Mind", 241, "body"],
+    ["f-scan15", "fmp-fifteen-minute-body-scan.m4a", "Fifteen Minute Body Scan", "Vidyamala Burch, Breathworks", 876, "body"],
+    ["f-scan20", "fmp-twenty-minute-body-scan.m4a", "Twenty Minute Body Scan", "UCSD Center for Mindfulness", 1392, "body"],
+    ["f-scan40", "fmp-body-scan.m4a", "Full Body Scan", "Kieran Fleck", 2390, "body"],
+    ["f-scan45", "fmp-forty-five-minute-body-scan.m4a", "Forty-five Minute Body Scan", "UCSD Center for Mindfulness", 2854, "body"],
+    ["f-seated", "fmp-seated-meditation.m4a", "Seated Meditation", "UCSD Center for Mindfulness", 1263, "sitting"],
+    ["f-sitting", "fmp-sitting-meditation.m4a", "Sitting Meditation", "Kieran Fleck", 1219, "sitting"],
+    ["f-wisdom", "fmp-ten-minute-wisdom.m4a", "Wisdom Meditation", "UCSD Center for Mindfulness", 626, "sitting"],
+    ["f-compassion", "fmp-compassionate-breath.m4a", "Compassionate Breath", "Vidyamala Burch, Breathworks", 693, "heart"],
+    ["f-mountain1", "fmp-mountain-meditation-a.m4a", "Mountain Meditation", "Peter Morgan", 493, "imagery"],
+    ["f-mountain2", "fmp-mountain-meditation-b.m4a", "Mountain Meditation", "Padraig O'Morain", 437, "imagery"],
+    ["d-31158", "ds-31158.m4a", "Ten-Minute Basic Meditation", "Tara Brach", 630, "sitting", 1],
+    ["d-87654", "ds-87654.m4a", "Disarming Our Hearts", "Tara Brach", 653, "heart", 1],
+    ["d-59251", "ds-59251.m4a", "RAIN on Blame", "Tara Brach", 878, "heart", 1],
+    ["d-87808", "ds-87808.m4a", "Saying Yes to Our Life", "Tara Brach", 707, "heart", 1],
+    ["d-72448", "ds-72448.m4a", "Guided Mindfulness Meditation", "Diana Winston", 659, "sitting", 1],
+    ["d-49297", "ds-49297.m4a", "Guided Mindfulness Meditation", "Oren Jay Sofer", 869, "sitting", 1],
+    ["d-61438", "ds-61438.m4a", "A Fox in the Woods", "Oren Jay Sofer", 865, "imagery", 1],
+    ["d-65527", "ds-65527.m4a", "Ten Minutes of Sitting", "Pamela Weiss", 601, "sitting", 1],
+    ["d-65528", "ds-65528.m4a", "Fifteen Minutes of Sitting", "Pamela Weiss", 901, "sitting", 1],
+    ["d-19771", "ds-19771.m4a", "Early Morning: Leaving Yesterday's Shadow", "Akincano Marc Weber", 894, "sitting", 1],
+    ["d-19773", "ds-19773.m4a", "Waking Up, Letting Go, Letting In", "Akincano Marc Weber", 692, "sitting", 1],
+    ["d-19772", "ds-19772.m4a", "Early Morning: Listening and Voices", "Akincano Marc Weber", 867, "sitting", 1],
+    ["d-19770", "ds-19770.m4a", "Early Morning: Gateways", "Akincano Marc Weber", 665, "sitting", 1],
+    ["d-19768", "ds-19768.m4a", "Early Morning: Body, Part 1", "Akincano Marc Weber", 740, "body", 1],
+    ["d-19769", "ds-19769.m4a", "Early Morning: Body, Part 2", "Akincano Marc Weber", 641, "body", 1],
+    ["d-86859", "ds-86859.m4a", "Mindfulness of Today", "Caroline Jones", 797, "sitting", 1],
+    ["d-83985", "ds-83985.m4a", "Impermanence", "Caroline Jones", 864, "sitting", 1],
+    ["d-57426", "ds-57426.m4a", "Relaxing the Body, Stilling the Mind", "Jill Shepherd", 916, "body", 1],
+    ["d-57334", "ds-57334.m4a", "Body and Heart-Mind", "Jill Shepherd", 923, "sitting", 1],
+    ["d-57240", "ds-57240.m4a", "Body, Breathing, Choiceless Awareness", "Jill Shepherd", 888, "sitting", 1],
+    ["d-57146", "ds-57146.m4a", "Body Sitting, Breathing", "Jill Shepherd", 840, "breath", 1],
+    ["d-56758", "ds-56758.m4a", "Mindfulness of Body and Breathing", "Jill Shepherd", 921, "breath", 1],
+    ["d-57644", "ds-57644.m4a", "Equanimity", "Jill Shepherd", 912, "heart", 1],
+    ["d-57637", "ds-57637.m4a", "Compassion", "Jill Shepherd", 752, "heart", 1],
+    ["d-50380", "ds-50380.m4a", "Self-Compassion", "Jill Shepherd", 880, "heart", 1],
+    ["d-49935", "ds-49935.m4a", "The Body and Physical Sensations", "Jill Shepherd", 931, "body", 1],
+    ["d-64175", "ds-64175.m4a", "Arriving", "Jill Shepherd", 725, "sitting", 1],
+    ["d-98754", "ds-98754.m4a", "The Field of Awareness", "Amita Schmidt", 708, "sitting", 1],
+    ["d-76402", "ds-76402.m4a", "Below the Waves", "Amita Schmidt", 506, "imagery", 1],
+    ["d-74108", "ds-74108.m4a", "Self-Forgiveness", "Amita Schmidt", 555, "heart", 1],
+    ["d-69106", "ds-69106.m4a", "Wise Older Self", "Amita Schmidt", 655, "imagery", 1],
+    ["d-40497", "ds-40497.m4a", "A Bigger Perspective", "Amita Schmidt", 765, "sitting", 1],
+    ["d-67836", "ds-67836.m4a", "Forgiveness", "Amita Schmidt", 909, "heart", 1],
+    ["d-63461", "ds-63461.m4a", "Simple Compassion", "Dhammadīpā", 749, "heart", 1],
+    ["d-58491", "ds-58491.m4a", "Loving Kindness", "Dhammadīpā", 712, "heart", 1],
+    ["d-58489", "ds-58489.m4a", "Beginning, Middle and End of the Breath", "Dhammadīpā", 604, "breath", 1],
+    ["d-98640", "ds-98640.m4a", "Letting Go as Dynamic Balance", "Kim Allen", 881, "sitting", 1],
+    ["d-76535", "ds-76535.m4a", "Metta", "Leigh Brasington", 576, "heart", 1],
+    ["d-76545", "ds-76545.m4a", "Short Metta", "Leigh Brasington", 535, "heart", 1],
+    ["d-40808", "ds-40808.m4a", "Equanimity", "Catherine McGee", 649, "heart", 1],
+    ["d-17667", "ds-17667.m4a", "Working with the Inner Critic", "Mark Coleman", 879, "heart", 1],
+    ["d-34971", "ds-34971.m4a", "Exploring the Judgmental Mind", "Donald Rothberg", 552, "sitting", 1],
+    ["d-32227", "ds-32227.m4a", "Impermanence", "Donald Rothberg", 929, "sitting", 1],
+    ["d-94454", "ds-94454.m4a", "Lightly Guided Sitting", "Dawn Neal", 620, "sitting", 1],
+    ["d-72781", "ds-72781.m4a", "Short Guided Meditation", "Nathan Glyde", 861, "sitting", 1],
+    ["d-94289", "ds-94289.m4a", "Fifteen-Minute Sitting", "Bernat Font", 904, "sitting", 1],
+    ["d-96040", "ds-96040.m4a", "Everything Is Lovable", "Devon Hase", 780, "heart", 1],
+    ["d-89266", "ds-89266.m4a", "Wise Intention", "Devon Hase", 696, "sitting", 1],
+    ["d-78248", "ds-78248.m4a", "Taking Responsibility for Well-Being", "Mark Nunberg", 897, "sitting", 1],
+    ["d-67045", "ds-67045.m4a", "The Capacity to Be Here", "Willa Thaniya Reid", 541, "sitting", 1],
+    ["d-67034", "ds-67034.m4a", "Trusting the Process", "Willa Thaniya Reid", 606, "sitting", 1],
+    ["d-65985", "ds-65985.m4a", "Bodily Ease", "Ajahn Sucitto", 892, "body", 1],
+    ["d-65809", "ds-65809.m4a", "The Simplicity of Body Breathing", "Ajahn Sucitto", 733, "breath", 1],
+    ["d-29111", "ds-29111.m4a", "Experiencing the Whole Body", "Ajahn Sucitto", 793, "body", 1],
+    ["d-68858", "ds-68858.m4a", "An Embodied Sense of Support", "Ajahn Sucitto", 919, "body", 1],
+    ["d-66327", "ds-66327.m4a", "Open Stability", "Ajahn Sucitto", 900, "sitting", 1],
+    ["d-62516", "ds-62516.m4a", "The Process of Centering", "Ajahn Sucitto", 749, "sitting", 1],
+    ["d-77197", "ds-77197.m4a", "Awareness and Attention", "Ajahn Sucitto", 804, "sitting", 1],
+    ["d-37458", "ds-37458.m4a", "Beginning to Nurture Calm", "Brian Lesage", 785, "sitting", 1],
+    ["d-37107", "ds-37107.m4a", "The Nature of Mind", "Steve Armstrong", 727, "sitting", 1],
+    ["d-32043", "ds-32043.m4a", "Being Awareness", "Ayya Santacitta", 930, "sitting", 1],
+    ["d-54447", "ds-54447.m4a", "Body-Wise", "Ayya Medhanandi", 647, "body", 1],
+    ["d-55763", "ds-55763.m4a", "Guided Sitting", "Jean Esther", 636, "sitting", 1],
+    ["d-54395", "ds-54395.m4a", "Just As We Are", "Ayya Medhanandi", 640, "sitting", 1],
+    ["d-24201", "ds-24201.m4a", "Deep Happiness, Part 1", "Shaila Catherine", 884, "sitting", 1],
+    ["d-24203", "ds-24203.m4a", "Deep Happiness, Part 3", "Shaila Catherine", 717, "sitting", 1],
+    ["d-13496", "ds-13496.m4a", "Mindfulness of Breathing", "Matthew Daniell", 929, "breath", 1],
+    ["d-19546", "ds-19546.m4a", "Morning Instructions and Reflection", "Greg Scharf", 897, "sitting", 1],
+    ["d-86423", "ds-86423.m4a", "Guided Sitting", "Lama Rod Owens", 916, "sitting", 1],
+    ["d-74180", "ds-74180.m4a", "Guided Sitting", "Sari Markkanen", 886, "sitting", 1],
+    ["d-64367", "ds-64367.m4a", "Settling In", "Jaya Rudgard", 846, "sitting", 1],
+    ["d-83862", "ds-83862.m4a", "The Perfection of Metta", "Ayya Santussika", 768, "heart", 1],
+    ["d-54030", "ds-54030.m4a", "Compassion: Freedom from Harm", "Ayya Anandabodhi", 739, "heart", 1],
+    ["d-30928", "ds-30928.m4a", "Loving Kindness", "Amma Thanasanti", 681, "heart", 1]
+  ].map(function (a) { return { id: a[0], src: "audio/" + a[1], title: a[2], by: a[3], sec: a[4], cat: a[5], m: !!a[6] }; });
+  var BY_ID = {}; TRACKS.forEach(function (t) { BY_ID[t.id] = t; });
+  ["u-bsb", "u-kind", "f-b10", "f-mb10", "f-scan15", "f-wisdom", "f-compassion", "f-mountain1"].forEach(function (id) { BY_ID[id].m = true; });
+  // Morning 10: every session of roughly 8 to 15 minutes, in a fixed shuffled order so teachers and themes alternate.
+  function mix(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); h ^= h >>> 15; return Math.imul(h, 2246822519) >>> 0; }
+  var MORNING_ALL = TRACKS.filter(function (t) { return t.m; }).sort(function (a, b) { return mix(a.id) - mix(b.id); });
+  var PATH = ["u-breath", "f-scan4", "f-b6", "f-space", "u-sound", "f-b10", "u-bsb", "u-kind", "f-scan15", "u-diff", "f-mountain1", "u-complete", "f-sitting", "f-seated"];
+
+  var PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+  var PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4.5h4.2v15H6zM13.8 4.5H18v15h-4.2z"/></svg>';
+  var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function mins(sec) { return Math.max(1, Math.round(sec / 60)) + " min"; }
+  function clock(sec) { sec = Math.max(0, Math.round(sec)); var m = Math.floor(sec / 60), s = sec % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+  function dayKey(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function addDays(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); return x; }
+  function total(sec) { var m = Math.round(sec / 60); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; }
+
+  // ---------- Journal: every finished or partly heard session ----------
+  var store = {
+    get: function (k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+  };
+  var log = store.get("cisza.log", []);          // {t: ms, s: seconds, k: track id or "timer", d: 1 when completed}
+  var positions = store.get("cisza.pos", {});     // where each recording was left off
+  var prefs = store.get("cisza.prefs", { skip: [], at: 0 }); // sessions taken out of the morning rotation
+  function hiddenMap() { var h = {}; (prefs.skip || []).forEach(function (id) { h[id] = 1; }); return h; }
+  function morning() {
+    var h = hiddenMap(), list = MORNING_ALL.filter(function (t) { return !h[t.id]; });
+    return list.length ? list : MORNING_ALL;
+  }
+  function setHidden(id, hide) {
+    prefs.skip = (prefs.skip || []).filter(function (x) { return x !== id; });
+    if (hide) prefs.skip.push(id);
+    prefs.at = Date.now(); store.set("cisza.prefs", prefs); topUp();
+  }
+
+  function record(sec, key, done) {
+    var e = { t: Date.now(), s: Math.round(sec), k: key, d: done ? 1 : 0 };
+    log.push(e); store.set("cisza.log", log); renderAll(); topUp();
+  }
+  function doneSet() { var s = {}; log.forEach(function (e) { if (e.d) s[e.k] = 1; }); return s; }
+  function perDay() { var m = {}; log.forEach(function (e) { var k = dayKey(new Date(e.t)); m[k] = (m[k] || 0) + e.s; }); return m; }
+  function streaks() {
+    var days = perDay(), today = new Date(), cur = 0, d = today;
+    if (!days[dayKey(d)]) d = addDays(d, -1);
+    while (days[dayKey(d)]) { cur++; d = addDays(d, -1); }
+    var keys = Object.keys(days).sort(), best = 0, run = 0, prev = null;
+    keys.forEach(function (k) {
+      var p = k.split("-"), dt = new Date(+p[0], +p[1] - 1, +p[2]);
+      run = prev && dayKey(addDays(prev, 1)) === k ? run + 1 : 1;
+      if (run > best) best = run; prev = dt;
+    });
+    return { cur: cur, best: best };
+  }
+
+  // ---------- Rendering ----------
+  function nextOnPath() {
+    var done = doneSet();
+    for (var i = 0; i < PATH.length; i++) if (!done[PATH[i]]) return { track: BY_ID[PATH[i]], day: i + 1 };
+    var rest = TRACKS.filter(function (t) { return !done[t.id]; });
+    var pool = rest.length ? rest : TRACKS;
+    var n = Math.floor(Date.now() / 864e5) % pool.length;
+    return { track: pool[n], day: 0 };
+  }
+  function nextMorning() {
+    var M = morning(), done = doneSet(), heard = 0, last = {}, i;
+    for (i = 0; i < M.length; i++) if (done[M[i].id]) heard++;
+    if (!navigator.onLine) for (i = 0; i < M.length; i++) if (!done[M[i].id] && isSaved(M[i])) return { track: M[i], heard: heard, total: M.length };
+    for (i = 0; i < M.length; i++) if (!done[M[i].id]) return { track: M[i], heard: heard, total: M.length };
+    log.forEach(function (e) { last[e.k] = e.t; });
+    var oldest = M.slice().sort(function (a, b) { return (last[a.id] || 0) - (last[b.id] || 0); })[0];
+    return { track: oldest, heard: heard, total: M.length };
+  }
+  function rowHtml(t, lead, cls) {
+    return '<button type="button" class="row ' + cls + '" data-id="' + t.id + '">' + lead +
+      '<span><b>' + esc(t.title) + '</b><span class="by">' + esc(t.by) + (cls.indexOf("off") >= 0 ? " · removed from Morning 10" : "") + '</span></span><span class="len">' + (isSaved(t) ? '<i class="sv" title="Saved on this phone"></i>' : "") + mins(t.sec) + '</span></button>';
+  }
+  function renderToday() {
+    var now = new Date(), done = doneSet(), nx = nextOnPath(), mo = nextMorning(), days = perDay(), st = streaks();
+    $("date").textContent = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    $("next").dataset.id = mo.track.id;
+    $("next").innerHTML = '<div><span class="eyebrow">Morning 10 · ' + mo.heard + " of " + mo.total + ' heard</span><h1>' + esc(mo.track.title) +
+      '</h1><p class="meta">' + mins(mo.track.sec) + " · " + esc(mo.track.by) + '</p></div><span class="playdot" aria-hidden="true">' + PLAY + '</span>';
+    var monday = addDays(now, -((now.getDay() + 6) % 7)), html = "";
+    ["M", "T", "W", "T", "F", "S", "S"].forEach(function (l, i) {
+      var d = addDays(monday, i), k = dayKey(d);
+      html += '<span class="day' + (days[k] ? " on" : "") + (k === dayKey(now) ? " today" : "") + '"><i></i>' + l + '</span>';
+    });
+    $("days").innerHTML = html;
+    $("streak").innerHTML = st.cur + (st.cur === 1 ? " day" : " days") + '<small>' + (st.cur ? (days[dayKey(now)] ? "in a row, today included" : "in a row. Sit today to keep it") : "Your streak starts with one session") + '</small>';
+    $("path").innerHTML = PATH.map(function (id, i) {
+      var t = BY_ID[id], lead = done[id] ? '<span class="tick">' + TICK + '</span>' : '<span class="n">' + (i + 1) + '</span>';
+      return rowHtml(t, lead, (done[id] ? "done" : "") + (nx.day === i + 1 ? " current" : ""));
+    }).join("");
+  }
+  var cat = store.get("cisza.cat", "all");
+  function renderLibrary() {
+    var done = doneSet(), hid = hiddenMap();
+    $("cats").innerHTML = [["all", "All"], ["morning", "Morning 10"]].concat(Object.keys(CATS).map(function (k) { return [k, CATS[k]]; })).map(function (c) {
+      return '<button type="button" class="chip" data-cat="' + c[0] + '" aria-pressed="' + (cat === c[0]) + '">' + c[1] + '</button>';
+    }).join("");
+    var list = TRACKS.filter(function (t) { return cat === "all" || (cat === "morning" ? t.m : t.cat === cat); }).sort(function (a, b) { return a.sec - b.sec; });
+    $("libcount").textContent = list.length + " sessions";
+    $("lib").innerHTML = list.map(function (t) {
+      return rowHtml(t, '<span class="tick">' + (done[t.id] ? TICK : "") + '</span>', (done[t.id] ? "done" : "") + (hid[t.id] ? " off" : ""));
+    }).join("");
+  }
+  function renderProgress() {
+    var st = streaks(), days = perDay(), now = new Date(), sum = 0;
+    log.forEach(function (e) { sum += e.s; });
+    $("figures").innerHTML = [[st.cur, "day streak"], [st.best, "longest streak"], [total(sum), "time sitting"], [log.length, "sessions"]].map(function (f) {
+      return "<div><b>" + f[0] + "</b><span>" + f[1] + "</span></div>";
+    }).join("");
+    var start = addDays(now, -((now.getDay() + 6) % 7) - 28), html = "";
+    ["M", "T", "W", "T", "F", "S", "S"].forEach(function (l) { html += '<span class="h">' + l + "</span>"; });
+    for (var i = 0; i < 35; i++) {
+      var d = addDays(start, i), k = dayKey(d), s = days[k] || 0, cls = "cell";
+      if (d > now && k !== dayKey(now)) cls += " fut";
+      else if (s >= 1200) cls += " l3"; else if (s >= 480) cls += " l2"; else if (s > 0) cls += " l1";
+      if (k === dayKey(now)) cls += " now";
+      html += '<span class="' + cls + '" title="' + k + (s ? ", " + mins(s) : "") + '"></span>';
+    }
+    $("grid").innerHTML = html;
+    var recent = log.slice(-8).reverse();
+    $("recent").innerHTML = recent.length ? recent.map(function (e) {
+      var t = BY_ID[e.k], name = t ? t.title : "Unguided sitting";
+      return '<div class="hist"><span>' + esc(name) + '</span><span>' + mins(e.s) + " · " + new Date(e.t).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + "</span></div>";
+    }).join("") : '<p class="empty">Nothing yet. Your first session will show up here.</p>';
+  }
+  function renderAll() { renderToday(); renderLibrary(); renderProgress(); }
+
+  // ---------- Navigation ----------
+  function show(v) {
+    ["today", "library", "timer", "progress"].forEach(function (n) { $("v-" + n).hidden = n !== v; });
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
+      if (b.dataset.v === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    window.scrollTo(0, 0); store.set("cisza.view", v);
+  }
+  document.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest(".tab"); if (b) show(b.dataset.v); });
+  $("cats").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (b) { cat = b.dataset.cat; store.set("cisza.cat", cat); renderLibrary(); } });
+  document.querySelector(".app").addEventListener("click", function (e) { var b = e.target.closest("[data-id]"); if (b) openPlayer(BY_ID[b.dataset.id]); });
+
+  // ---------- Player ----------
+  var au = $("au"), cur = null, heard = 0, lastT = 0, finished = false, seeking = false;
+  function setPP(playing) {
+    $("pp").innerHTML = playing ? PAUSE : PLAY; $("pp").setAttribute("aria-label", playing ? "Pause" : "Play");
+    $("player").classList.toggle("live", playing);
+  }
+  function openPlayer(t) {
+    if (!t) return;
+    cur = t; heard = 0; finished = false;
+    $("ptitle").textContent = t.title; $("pby").textContent = t.by; $("pcat").textContent = CATS[t.cat];
+    $("pdur").textContent = clock(t.sec); $("seek").max = t.sec; $("seek").value = 0; $("pcur").textContent = "0:00"; $("pstatus").textContent = "";
+    $("pcat").textContent = t.m ? "Morning 10" : CATS[t.cat];
+    $("pskip").hidden = !t.m; skipLabel();
+    $("player").hidden = false; setPP(false);
+    au.src = t.src; enqueue([t]);
+    var resume = positions[t.id] || 0;
+    lastT = resume;
+    au.addEventListener("loadedmetadata", function once() {
+      au.removeEventListener("loadedmetadata", once);
+      if (resume > 10 && resume < au.duration - 20) { au.currentTime = resume; $("pstatus").textContent = "Picking up where you left off"; }
+    });
+    au.play().catch(function () { $("pstatus").textContent = "Tap play to begin"; });
+    if ("mediaSession" in navigator && window.MediaMetadata) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.by, album: "Cisza" });
+    }
+  }
+  function skipLabel() { if (cur) $("pskip").textContent = hiddenMap()[cur.id] ? "Put back in Morning 10" : "Remove from Morning 10"; }
+  $("pskip").addEventListener("click", function () {
+    if (!cur) return;
+    var hide = !hiddenMap()[cur.id];
+    setHidden(cur.id, hide); skipLabel();
+    $("pstatus").textContent = hide ? "Removed. It will not come up in the morning again." : "Back in the morning rotation.";
+  });
+  if ("mediaSession" in navigator) {
+    var ms = navigator.mediaSession, act = function (name, fn) { try { ms.setActionHandler(name, fn); } catch (e) { /* not supported here */ } };
+    act("play", function () { au.play().catch(function () {}); });
+    act("pause", function () { au.pause(); });
+    act("seekbackward", function () { au.currentTime = Math.max(0, au.currentTime - 15); });
+    act("seekforward", function () { if (au.duration) au.currentTime = Math.min(au.duration - 1, au.currentTime + 15); });
+    act("seekto", function (d) { if (d && typeof d.seekTime === "number") au.currentTime = d.seekTime; });
+  }
+  function closePlayer() {
+    au.pause();
+    if (cur && !finished) {
+      positions[cur.id] = au.currentTime || 0; store.set("cisza.pos", positions);
+      if (heard >= 60) record(heard, cur.id, false);
+    }
+    au.removeAttribute("src"); au.load();
+    $("player").hidden = true; cur = null; renderAll();
+  }
+  au.addEventListener("play", function () { setPP(true); $("pstatus").textContent = ""; });
+  au.addEventListener("pause", function () { setPP(false); });
+  au.addEventListener("waiting", function () { $("pstatus").textContent = "Loading…"; });
+  au.addEventListener("playing", function () { $("pstatus").textContent = ""; });
+  au.addEventListener("error", function () { if (cur) $("pstatus").textContent = navigator.onLine ? "This recording could not be loaded. Try again in a moment." : "This recording is not saved on this phone yet. Go online to play it."; });
+  au.addEventListener("timeupdate", function () {
+    var t = au.currentTime, delta = t - lastT;
+    if (delta > 0 && delta < 2) heard += delta;
+    lastT = t;
+    if (!seeking) { $("seek").value = t; $("pcur").textContent = clock(t); }
+    if (au.duration && isFinite(au.duration)) { $("seek").max = au.duration; $("pdur").textContent = clock(au.duration); }
+  });
+  au.addEventListener("ended", function () {
+    if (!cur || finished) return;
+    finished = true; delete positions[cur.id]; store.set("cisza.pos", positions);
+    record(Math.max(heard, 60), cur.id, true);
+    $("pstatus").textContent = "Session complete. Well sat.";
+  });
+  $("pp").addEventListener("click", function () {
+    if (finished) { finished = false; heard = 0; au.currentTime = 0; }
+    if (au.paused) au.play().catch(function () {}); else au.pause();
+  });
+  $("back").addEventListener("click", function () { au.currentTime = Math.max(0, au.currentTime - 15); });
+  $("fwd").addEventListener("click", function () { if (au.duration) au.currentTime = Math.min(au.duration - 1, au.currentTime + 15); });
+  $("seek").addEventListener("input", function () { seeking = true; $("pcur").textContent = clock(+this.value); });
+  $("seek").addEventListener("change", function () { au.currentTime = +this.value; seeking = false; });
+  $("pclose").addEventListener("click", closePlayer);
+
+  // ---------- Timer ----------
+  var minutes = store.get("cisza.min", 10), bellMode = store.get("cisza.bell", "none");
+  var bell = $("bell"), sit = null, wake = null;
+  function ring() { try { bell.currentTime = 0; var p = bell.play(); if (p && p.catch) p.catch(function () {}); } catch (e) { /* no sound */ } }
+  function renderTimer() {
+    $("mins").textContent = minutes;
+    $("presets").innerHTML = [5, 10, 15, 20, 30, 45].map(function (m) {
+      return '<button type="button" class="chip" data-m="' + m + '" aria-pressed="' + (m === minutes) + '">' + m + " min</button>";
+    }).join("");
+    $("bells").innerHTML = [["none", "None"], ["half", "Halfway"], ["five", "Every 5 minutes"]].map(function (b) {
+      return '<button type="button" class="chip" data-b="' + b[0] + '" aria-pressed="' + (b[0] === bellMode) + '">' + b[1] + "</button>";
+    }).join("");
+  }
+  function setMinutes(m) { minutes = Math.min(120, Math.max(1, m)); store.set("cisza.min", minutes); renderTimer(); }
+  $("less").addEventListener("click", function () { setMinutes(minutes - 1); });
+  $("more").addEventListener("click", function () { setMinutes(minutes + 1); });
+  $("presets").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (b) setMinutes(+b.dataset.m); });
+  $("bells").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (b) { bellMode = b.dataset.b; store.set("cisza.bell", bellMode); renderTimer(); } });
+
+  function marks(totalSec) {
+    var out = [];
+    if (bellMode === "half" && totalSec >= 120) out.push(totalSec / 2);
+    if (bellMode === "five") for (var s = 300; s < totalSec - 30; s += 300) out.push(s);
+    return out;
+  }
+  function elapsed() { return sit.done + (sit.since ? (Date.now() - sit.since) / 1000 : 0); }
+  function tick() {
+    if (!sit) return;
+    var el = elapsed(), left = sit.total - el;
+    $("clock").textContent = clock(Math.ceil(Math.max(0, left)));
+    while (sit.marks.length && el >= sit.marks[0]) { sit.marks.shift(); ring(); }
+    if (left <= 0) finishSit(true);
+  }
+  function startSit() {
+    sit = { total: minutes * 60, done: 0, since: Date.now(), marks: marks(minutes * 60), iv: setInterval(tick, 250) };
+    $("sit").hidden = false; $("sit").classList.add("live"); $("spause").textContent = "Pause"; $("spause").hidden = false; $("send").textContent = "End now";
+    $("sstatus").textContent = bellMode === "five" ? "A bell every five minutes" : bellMode === "half" ? "A bell at the halfway point" : "";
+    ring(); tick();
+    if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request("screen").then(function (w) { wake = w; }).catch(function () {});
+  }
+  function finishSit(complete) {
+    if (!sit) return;
+    var el = Math.min(sit.total, elapsed());
+    clearInterval(sit.iv); sit = null;
+    if (wake) { try { wake.release(); } catch (e) { /* already released */ } wake = null; }
+    $("sit").classList.remove("live");
+    if (complete) {
+      ring(); record(el, "timer", true);
+      $("clock").textContent = "0:00"; $("sstatus").textContent = "Session complete. Well sat."; $("spause").hidden = true; $("send").textContent = "Done";
+    } else {
+      if (el >= 60) record(el, "timer", false);
+      $("sit").hidden = true;
+    }
+  }
+  $("start").addEventListener("click", startSit);
+  $("spause").addEventListener("click", function () {
+    if (!sit) return;
+    if (sit.since) { sit.done = elapsed(); sit.since = 0; this.textContent = "Resume"; $("sit").classList.remove("live"); }
+    else { sit.since = Date.now(); this.textContent = "Pause"; $("sit").classList.add("live"); }
+  });
+  function leaveSit() { if (sit) finishSit(false); else $("sit").hidden = true; }
+  $("send").addEventListener("click", leaveSit);
+  $("sclose").addEventListener("click", leaveSit);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && sit && navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request("screen").then(function (w) { wake = w; }).catch(function () {});
+    if (!document.hidden) tick();
+  });
+
+  // ---------- Offline: recordings kept on this phone ----------
+  var AUDIO_CACHE = "cisza-audio", KEEP_AHEAD = 7;
+  var canSave = "caches" in window && "serviceWorker" in navigator;
+  var saved = {}, queue = [], busy = false, fails = 0, trouble = "", wantAll = store.get("cisza.all", false);
+  function abs(src) { return new URL(src, location.href).href; }
+  function isSaved(t) { return !!saved[abs(t.src)]; }
+  function enqueue(list) {
+    if (!canSave) return;
+    list.forEach(function (t) { if (!isSaved(t) && queue.indexOf(t) < 0) queue.push(t); });
+    pump();
+  }
+  function pump() {
+    if (busy || !queue.length || !navigator.onLine) { renderOffline(); return; }
+    var t = queue.shift();
+    if (isSaved(t)) { pump(); return; }
+    busy = true; renderOffline();
+    fetch(t.src).then(function (r) {
+      if (r.status !== 200) throw new Error("status " + r.status);
+      return caches.open(AUDIO_CACHE).then(function (c) { return c.put(abs(t.src), r); });
+    }).then(function () { saved[abs(t.src)] = 1; fails = 0; trouble = ""; }, function () { fails++; }).then(function () {
+      busy = false;
+      if (fails >= 3) { queue = []; fails = 0; trouble = "Some recordings could not be saved. The phone may be short of space, or the connection dropped."; }
+      renderLibrary(); pump();
+    });
+  }
+  // Keep the coming mornings on the phone; with "save everything" on, keep the whole library.
+  function topUp() {
+    if (!canSave) return;
+    if (wantAll) { enqueue(TRACKS); return; }
+    var done = doneSet();
+    enqueue(morning().filter(function (t) { return !done[t.id]; }).slice(0, KEEP_AHEAD));
+  }
+  function renderOffline() {
+    var note = $("offnote"), btn = $("offall");
+    if (!canSave) { note.textContent = "This browser cannot keep recordings for offline listening."; btn.hidden = true; return; }
+    var n = TRACKS.filter(isSaved).length, all = n === TRACKS.length;
+    var text = n + " of " + TRACKS.length + " sessions are saved on this phone and play without a connection.";
+    if (wantAll && !all) text += navigator.onLine ? " Saving the rest now; keep the app open." : " The rest will be saved when you are back online.";
+    if (!wantAll) text += " The next " + KEEP_AHEAD + " mornings are always saved ahead of time.";
+    if (trouble) text += " " + trouble;
+    note.textContent = text;
+    btn.textContent = all ? "Everything is saved" : wantAll ? "Stop saving" : "Save every session (about 320 MB)";
+    btn.disabled = all;
+  }
+  $("offall").addEventListener("click", function () {
+    wantAll = !wantAll; store.set("cisza.all", wantAll); trouble = "";
+    if (wantAll) { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); topUp(); }
+    else { queue = []; renderOffline(); }
+  });
+  window.addEventListener("online", function () { renderAll(); topUp(); });
+  window.addEventListener("offline", function () { renderAll(); renderOffline(); });
+  function startOffline() {
+    if (!canSave) { renderOffline(); return; }
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+    caches.open(AUDIO_CACHE).then(function (c) { return c.keys(); }).then(function (keys) {
+      keys.forEach(function (r) { saved[r.url] = 1; });
+    }).catch(function () {}).then(function () { renderAll(); topUp(); renderOffline(); });
+  }
+
+  // ---------- Backup: the journal as a file ----------
+  function backNote(text) { $("backnote").hidden = false; $("backnote").textContent = text; }
+  $("backup").addEventListener("click", function () {
+    var name = "cisza-backup-" + dayKey(new Date()) + ".json";
+    var body = JSON.stringify({ app: "cisza", v: 1, at: Date.now(), log: log, prefs: prefs, positions: positions });
+    var blob = new Blob([body], { type: "application/json" }), file = null;
+    try { file = new File([blob], name, { type: "application/json" }); } catch (e) { /* older browser */ }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).then(function () { backNote("Backup handed over. Keep the file somewhere safe, such as Files or iCloud Drive."); }, function () {});
+      return;
+    }
+    var a = document.createElement("a"), href = URL.createObjectURL(blob);
+    a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(href); }, 10000);
+    backNote("Backup saved as " + name + ".");
+  });
+  $("restore").addEventListener("click", function () { $("restorefile").click(); });
+  $("restorefile").addEventListener("change", function () {
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onerror = function () { backNote("That file could not be read."); };
+    reader.onload = function () {
+      var data = null;
+      try { data = JSON.parse(reader.result); } catch (e) { /* not JSON */ }
+      if (!data || data.app !== "cisza" || !Array.isArray(data.log)) { backNote("That file is not a Cisza backup."); return; }
+      var seen = {}, added = 0;
+      log.forEach(function (e) { seen[e.t] = 1; });
+      data.log.forEach(function (e) {
+        if (!e || typeof e.t !== "number" || seen[e.t]) return;
+        seen[e.t] = 1; added++; log.push({ t: e.t, s: +e.s || 0, k: String(e.k || "timer"), d: e.d ? 1 : 0 });
+      });
+      log.sort(function (a, b) { return a.t - b.t; }); store.set("cisza.log", log);
+      if (data.prefs && Array.isArray(data.prefs.skip) && (+data.prefs.at || 0) > (prefs.at || 0)) { prefs = { skip: data.prefs.skip.map(String), at: +data.prefs.at }; store.set("cisza.prefs", prefs); }
+      if (data.positions && typeof data.positions === "object") {
+        Object.keys(data.positions).forEach(function (k) { if (!(k in positions) && typeof data.positions[k] === "number") positions[k] = data.positions[k]; });
+        store.set("cisza.pos", positions);
+      }
+      renderAll(); topUp();
+      backNote(added ? "Restored " + added + (added === 1 ? " session." : " sessions.") : "Nothing new in that backup; your journal already has it all.");
+    };
+    reader.readAsText(f);
+  });
+
+  // ---------- Start ----------
+  renderAll(); renderTimer();
+  var v = store.get("cisza.view", "today"); if (["today", "library", "timer", "progress"].indexOf(v) < 0) v = "today";
+  show(v);
+  var standalone = navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  $("install").hidden = !!standalone || !/iPhone|iPad|iPod/.test(navigator.userAgent);
+  startOffline();
+})();
+</script>
+
+</body>
+</html>
